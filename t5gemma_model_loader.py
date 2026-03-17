@@ -1,5 +1,5 @@
 import torch
-from transformers import T5GemmaEncoderModel, AutoTokenizer
+from transformers import T5GemmaEncoderModel, T5Gemma2Model, AutoTokenizer, AutoConfig
 import gc
 import logging
 from .utils import get_llm_checkpoints, get_llm_checkpoint_path
@@ -61,11 +61,21 @@ class T5GEMMALoader:
                 
                 logger.info(f"Loading Language Model from {model_path}")
                 
-                self.model = T5GemmaEncoderModel.from_pretrained(
+                config = AutoConfig.from_pretrained(model_path)
+                
+                if config.model_type == "t5gemma":
+                    model_arch = T5GemmaEncoderModel
+                elif config.model_type == "t5gemma2":
+                    model_arch = T5Gemma2Model
+                else:
+                    raise Exception(f"Unsupported model type: {config.model_type}")
+                
+                self.model = model_arch.from_pretrained(
                     model_path,
                     torch_dtype=torch.bfloat16,
                     device_map=device,
                     is_encoder_decoder=False,
+                    trust_remote_code=True
                 )
                 
                 self.tokenizer = AutoTokenizer.from_pretrained(

@@ -21,7 +21,7 @@ class LLMAdapterLoader:
     
     @classmethod
     def INPUT_TYPES(cls):
-        adapter_types = ["gemma", "t5gemma"]
+        adapter_types = ["gemma", "t5gemma", "t5gemma-2"]
         return {
             "required": {
                 "adapter_name": (get_llm_adapters(), {
@@ -69,6 +69,16 @@ class LLMAdapterLoader:
                 "num_heads": 16,
                 "dropout": 0.0,
             },
+            "t5gemma-2": {
+                "llm_dim": 2560,            # Verified from config.json
+                "sdxl_seq_dim": 2048,
+                "sdxl_pooled_dim": 1280,
+                "target_seq_len": 308,
+                "n_wide_blocks": 8,         # 4.25 llm layers pr. block - 6 would provide 5.7
+                "n_narrow_blocks": 3,
+                "num_heads": 8,             # Verified from config.json
+                "dropout": 0.0,
+            }
         }
         
         if type not in ADAPTER_PRESETS:

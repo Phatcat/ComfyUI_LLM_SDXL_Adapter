@@ -1,4 +1,4 @@
-transformers>=4.53.1
+transformers>=5.3.0
 einops
 safetensors
 torch
