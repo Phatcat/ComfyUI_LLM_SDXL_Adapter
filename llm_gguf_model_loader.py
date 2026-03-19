@@ -59,7 +59,7 @@ class LLMGGUFModelLoader:
                     gc.collect()
                     torch.cuda.empty_cache()
                 
-                logger.info(f"Loading Language Model from {model_path}")
+                logger.info(f"Loading standalone GGUF {model_name} from {model_path}")
                 
                 self.model = AutoModelForCausalLM.from_pretrained(
                     model_path,
@@ -70,23 +70,41 @@ class LLMGGUFModelLoader:
                     trust_remote_code=True
                 )
                 
-                self.tokenizer = AutoTokenizer.from_pretrained(
-                    #model_path,
-                    #gguf_file = model_name,
-                    "unsloth/gemma-3-1b-it",
-                    trust_remote_code=True
-                )
+                # Try loading directly from the binary metadata first
+                try:
+                    self.tokenizer = AutoTokenizer.from_pretrained(
+                        model_path,
+                        gguf_file=model_name,
+                        trust_remote_code=True,
+                        local_files_only=True
+                    )
+                except Exception:
+                    logger.warning("Internal GGUF tokenizer not found. Checking local folder...")
+                    try:
+                        self.tokenizer = AutoTokenizer.from_pretrained(
+                            model_path,
+                            trust_remote_code=True,
+                            local_files_only=True
+                        )
+                    except Exception as tok_err:
+                        error_msg = (
+                            f"FATAL: Could not find a tokenizer for {model_name}.\n"
+                            f"GGUF internal check failed, and no tokenizer files found in {model_path}.\n"
+                            "Please ensure tokenizer_config.json is in the model folder."
+                        )
+                        logger.error(error_msg)
+                        raise FileNotFoundError(error_msg)
                 
                 self.current_model_path = model_path
-                logger.info("Language Model loaded successfully")
+                logger.info("GGUF and Tokenizer loaded successfully from local source.")
             
             info = f"Model: {model_path}\nDevice: {device}\nLoaded: {self.model is not None}"
             
             return (self.model, self.tokenizer, info)
             
         except Exception as e:
-            logger.error(f"Failed to load Language Model: {str(e)}")
-            raise Exception(f"Model loading failed: {str(e)}")
+            logger.error(f"GGUF Load Failed: {str(e)}")
+            raise e
 
 
 
