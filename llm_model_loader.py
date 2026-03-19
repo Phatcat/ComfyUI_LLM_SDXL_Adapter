@@ -28,7 +28,7 @@ class LLMModelLoader:
                 }),
             },
             "optional": {
-                "device": (["auto", "cuda:0", "cuda:1", "cpu"], {
+                "device": (["auto", "cuda:0", "cuda:1", "mps", "cpu"], {
                     "default": "auto"
                 }),
                 "force_reload": ("BOOLEAN", {
@@ -57,7 +57,10 @@ class LLMModelLoader:
                     del self.model
                     del self.tokenizer
                     gc.collect()
-                    torch.cuda.empty_cache()
+                    if "cuda" in device:
+                        torch.cuda.empty_cache()
+                    if device == "mps":
+                        torch.mps.empty_cache()
                 
                 logger.info(f"Loading Language Model from {model_path}")
                 
@@ -68,6 +71,13 @@ class LLMModelLoader:
                     output_hidden_states=True,
                     trust_remote_code=True
                 )
+                
+                if device == "mps":
+                    self.model.to("mps")
+                
+                gc.collect()
+                if device == "mps":
+                    torch.mps.empty_cache()
                 
                 self.tokenizer = AutoTokenizer.from_pretrained(
                     model_path,

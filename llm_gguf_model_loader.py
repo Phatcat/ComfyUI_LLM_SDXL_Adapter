@@ -28,7 +28,7 @@ class LLMGGUFModelLoader:
                 }),
             },
             "optional": {
-                "device": (["auto", "cuda:0", "cuda:1", "cpu"], {
+                "device": (["auto", "cuda:0", "cuda:1", "mps", "cpu"], {
                     "default": "auto"
                 }),
                 "force_reload": ("BOOLEAN", {
@@ -57,7 +57,10 @@ class LLMGGUFModelLoader:
                     del self.model
                     del self.tokenizer
                     gc.collect()
-                    torch.cuda.empty_cache()
+                    if "cuda" in device:
+                        torch.cuda.empty_cache()
+                    if device == "mps":
+                        torch.mps.empty_cache()
                 
                 logger.info(f"Loading Language Model from {model_path}")
                 
@@ -65,10 +68,17 @@ class LLMGGUFModelLoader:
                     model_path,
                     gguf_file = model_name,
                     torch_dtype=torch.bfloat16,
-                    device_map=device,
+                    device_map=None if device == "mps" else device,
                     output_hidden_states=True,
                     trust_remote_code=True
                 )
+
+                if device == "mps":
+                    self.model.to("mps")
+                
+                gc.collect()
+                if device == "mps":
+                    torch.mps.empty_cache()
                 
                 self.tokenizer = AutoTokenizer.from_pretrained(
                     #model_path,

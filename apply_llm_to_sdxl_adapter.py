@@ -25,13 +25,25 @@ class ApplyLLMToSDXLAdapter:
     def apply_adapter(self, llm_hidden_states, llm_adapter):
         """Apply the LLM to SDXL adapter transformation"""
         try:
+            device = next(llm_adapter.parameters()).device
+            dtype = next(llm_adapter.parameters()).dtype
+            
+            if llm_hidden_states.device != device or llm_hidden_states.dtype != dtype:
+                llm_hidden_states = llm_hidden_states.to(device).to(dtype).contiguous()
+            
             # Apply adapter
             with torch.no_grad():
                 conditioning, pooled_output = llm_adapter(llm_hidden_states)
+                del llm_hidden_states
             
             # Move tensors to CPU for ComfyUI conditioning system
-            conditioning = conditioning.cpu().contiguous()
-            pooled_output = pooled_output.cpu().contiguous()
+            conditioning = conditioning.detach().cpu().contiguous()
+            pooled_output = pooled_output.detach().cpu().contiguous()
+            
+            # Garbage collection
+            gc.collect()
+            if device == "mps":
+                torch.mps.empty_cache()
             
             # Format conditioning for ComfyUI
             # ComfyUI expects conditioning as a list of [cond_tensor, metadata_dict] tuples

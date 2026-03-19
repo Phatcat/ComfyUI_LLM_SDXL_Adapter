@@ -97,7 +97,10 @@ class LLMAdapterLoaderCustom:
                 if self.adapter is not None:
                     del self.adapter
                     gc.collect()
-                    torch.cuda.empty_cache()
+                    if "cuda" in device:
+                        torch.cuda.empty_cache()
+                    if device == "mps":
+                        torch.mps.empty_cache()
                 
                 logger.info(f"Loading LLM to SDXL adapter from {adapter_path}")
                 

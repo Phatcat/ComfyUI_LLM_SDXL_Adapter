@@ -75,10 +75,13 @@ class LLMTextEncoder:
             
             # Generate hidden states
             with torch.no_grad():
+                if device == "mps":
+                    torch.mps.synchronize()
                 outputs = model(**inputs)
                 
             # Extract hidden states, skipping first tokens
-            hidden_states = outputs['hidden_states'][-1][:, skip_first:, :].to(torch.float)
+            hidden_states = outputs['hidden_states'][-1][:, skip_first:, :].detach()
+            hidden_states = hidden_states.to(torch.bfloat16).contiguous()
             
             # Prepare info
             info = f"Text: {text[:50]}...\nTokens after skip: {hidden_states.shape[1]}\nShape: {hidden_states.shape}"

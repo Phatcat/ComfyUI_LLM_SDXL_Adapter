@@ -30,7 +30,7 @@ class LLMAdapterLoader:
                 "type": (adapter_types, {"default": "gemma"}),
             },
             "optional": {
-                "device": (["auto", "cuda:0", "cuda:1", "cpu"], {"default": "auto"}),
+                "device": (["auto", "cuda:0", "cuda:1", "mps", "cpu"], {"default": "auto"}),
                 "force_reload": ("BOOLEAN", {"default": False}),
             }
         }
@@ -82,7 +82,10 @@ class LLMAdapterLoader:
                 if self.adapter is not None:
                     del self.adapter
                     gc.collect()
-                    torch.cuda.empty_cache()
+                    if "cuda" in device:
+                        torch.cuda.empty_cache()
+                    if device == "mps":
+                        torch.mps.empty_cache()
                 
                 logger.info(f"Loading LLM to SDXL adapter from {adapter_path}")
                 
@@ -107,7 +110,7 @@ class LLMAdapterLoader:
                     logger.warning(f"Adapter file not found: {adapter_path}, using initialized weights")
                 
                 # Move to device
-                self.adapter.to(device)
+                self.adapter.to(device).to(torch.bfloat16)
                 self.adapter.eval()
                 
                 self.current_adapter_path = adapter_path

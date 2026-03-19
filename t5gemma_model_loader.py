@@ -28,7 +28,7 @@ class T5GEMMALoader:
                 }),
             },
             "optional": {
-                "device": (["auto", "cuda:0", "cuda:1", "cpu"], {
+                "device": (["auto", "cuda:0", "cuda:1", "mps", "cpu"], {
                     "default": "auto"
                 }),
                 "force_reload": ("BOOLEAN", {
@@ -57,16 +57,26 @@ class T5GEMMALoader:
                     del self.model
                     del self.tokenizer
                     gc.collect()
-                    torch.cuda.empty_cache()
+                    if "cuda" in device:
+                        torch.cuda.empty_cache()
+                    if device == "mps":
+                        torch.mps.empty_cache()
                 
                 logger.info(f"Loading Language Model from {model_path}")
                 
                 self.model = T5GemmaEncoderModel.from_pretrained(
                     model_path,
                     torch_dtype=torch.bfloat16,
-                    device_map=device,
+                    device_map=None if device == "mps" else device,
                     is_encoder_decoder=False,
                 )
+                
+                if device == "mps":
+                    self.model.to("mps")
+                
+                gc.collect()
+                if device == "mps":
+                    torch.mps.empty_cache()
                 
                 self.tokenizer = AutoTokenizer.from_pretrained(
                     model_path,

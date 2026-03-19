@@ -1,4 +1,5 @@
 import torch
+import gc
 import logging
 
 logger = logging.getLogger("LLM-SDXL-Adapter")
@@ -34,11 +35,25 @@ class t5gemmaApplyLLMToSDXLAdapter:
     def apply(self, llm_hidden_states, llm_attention_mask, llm_adapter,
               width=None, height=None, target_width=None, target_height=None, crop_w=None, crop_h=None):
         try:
+            device = next(llm_adapter.parameters()).device
+            dtype = next(llm_adapter.parameters()).dtype
+
+            if llm_hidden_states.device != device or llm_hidden_states.dtype != dtype:
+                llm_hidden_states = llm_hidden_states.to(device).to(dtype).contiguous()
+
+            if llm_attention_mask.device != device:
+                llm_attention_mask = llm_attention_mask.to(device).contiguous()
+
             with torch.no_grad():
                 prompt_embeds, pooled_output = llm_adapter(llm_hidden_states, attention_mask=llm_attention_mask)
+                del llm_hidden_states, llm_attention_mask
 
-            prompt_embeds = prompt_embeds.cpu().contiguous()
-            pooled_output = pooled_output.cpu().contiguous()
+            prompt_embeds = prompt_embeds.detach().cpu().contiguous()
+            pooled_output = pooled_output.detach().cpu().contiguous()
+
+            gc.collect()
+            if device == "mps":
+                torch.mps.empty_cache()
 
             meta = {"pooled_output": pooled_output}
             if width is not None and height is not None:
