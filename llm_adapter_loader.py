@@ -56,7 +56,7 @@ class LLMAdapterLoader:
                 "target_seq_len": 308,
                 "n_wide_blocks": 2,
                 "n_narrow_blocks": 3,
-                "num_heads": 16,
+                "num_heads": 4,
                 "dropout": 0.1,
             },
             "t5gemma": {
